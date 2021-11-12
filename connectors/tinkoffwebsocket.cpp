@@ -90,7 +90,7 @@ void TinkoffWebSocket::webSocketDisconnected()
 
 void TinkoffWebSocket::webSocketError()
 {
-    SecuritiesTrackerBot::log("Error", "webSocketError(): Ошибка tinkoffWebSocket: " + webSocket.errorString() + ".");
+    SecuritiesTrackerBot::log("Error", "webSocketError(): Ошибка tinkoffWebSocket: " + webSocket.errorString());
 }
 
 void TinkoffWebSocket::webSocketMessageReceived(const QString &message)
