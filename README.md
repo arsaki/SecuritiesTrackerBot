@@ -17,4 +17,5 @@ Telegram bot, which sends notification when reached desired level of cryptocurre
   
  * Also, it needs optional Tinkoff OpenAPI token to track shares prices
  * (Obtained from https://www.tinkoff.ru/invest/settings/ after purchasing credit card).
- 
+ * Writed on C++11 with Qt 5.15 for Linux, i686 architecture
+ * Use Qt Creator to open project file.  
