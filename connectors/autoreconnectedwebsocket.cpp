@@ -11,23 +11,32 @@ AutoReconnectedWebSocket::AutoReconnectedWebSocket() : QWebSocket()
 
 AutoReconnectedWebSocket::~AutoReconnectedWebSocket()
 {
-    disconnect(this, & QWebSocket::disconnected, this, &AutoReconnectedWebSocket::webSocketDisconnected);
-    QEventLoop loop;
-    connect(this, &AutoReconnectedWebSocket::disconnected, &loop, &QEventLoop::quit);
-    this->close();
-    loop.exec();
-    disconnect(this, &AutoReconnectedWebSocket::disconnected, &loop, &QEventLoop::quit);
+    if (this->state()!=QAbstractSocket::UnconnectedState)
+        close();
 }
 
 void AutoReconnectedWebSocket::open(const QUrl &url)
 {
     URL = url.toString();
+    connectedByURL = true;
     QWebSocket::open(URL);
 }
 
 void AutoReconnectedWebSocket::open(const QNetworkRequest &request)
 {
+    AutoReconnectedWebSocket::request = request;
+    connectedByURL = false;
     QWebSocket::open(request);
+}
+
+void AutoReconnectedWebSocket::close()
+{
+    disconnect(this, & QWebSocket::disconnected, this, &AutoReconnectedWebSocket::webSocketDisconnected);
+    QEventLoop loop;
+    connect(this, &AutoReconnectedWebSocket::disconnected, &loop, &QEventLoop::quit);
+    QWebSocket::close();
+    loop.exec();
+    disconnect(this, &AutoReconnectedWebSocket::disconnected, &loop, &QEventLoop::quit);
 }
 
 int AutoReconnectedWebSocket::getDisconnectionCount()
@@ -41,7 +50,10 @@ void AutoReconnectedWebSocket::webSocketDisconnected()
     disconnectionCount++ ;
     while (this->state() != QAbstractSocket::ConnectedState)
     {
-        open(URL);
+        if (connectedByURL)
+            open(URL);
+        else
+            open(request);
         SecuritiesTrackerBot::delay(RECONNECT_TIMEOUT_MS);
     }
 }

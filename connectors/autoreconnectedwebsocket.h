@@ -12,9 +12,12 @@ public:
         ~AutoReconnectedWebSocket() override;
         void open(const QUrl &url);
         void open(const QNetworkRequest &request);
+        void close();
         int getDisconnectionCount();
 private:
         QString URL;
+        QNetworkRequest request;
+        bool connectedByURL;
         int disconnectionCount;
 protected slots:
         void webSocketDisconnected();

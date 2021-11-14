@@ -49,7 +49,12 @@ void BinanceWebSocket::unsubscribeFromProperty(const QString& propertyId)
         disconnect(removedSocket,&QWebSocket::textMessageReceived, this, &BinanceWebSocket::webSocketMessageReceived);
         removedSocket->close();
         propertyIdToSocket.remove(property);
-//        delete removedSocket;   //Постоянно здесь крашится. Надо ждать, пока закроется.
+        while (removedSocket->state() != QAbstractSocket::UnconnectedState)
+        {
+            SecuritiesTrackerBot::log("Error", "unsubscribeFromProperty(): websocket не закрылся, ожидание 100ms");
+            SecuritiesTrackerBot::delay(100);
+        }
+        delete removedSocket;   //Постоянно здесь крашится. Надо ждать, пока закроется.
         SecuritiesTrackerBot::log("Ok", "unsubscribeFromProperty():  Cокет Binance по валютной паре " + property + " закрыт.");
     }
     else
