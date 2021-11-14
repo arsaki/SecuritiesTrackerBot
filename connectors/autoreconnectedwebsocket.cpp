@@ -32,11 +32,7 @@ void AutoReconnectedWebSocket::open(const QNetworkRequest &request)
 void AutoReconnectedWebSocket::close()
 {
     disconnect(this, & QWebSocket::disconnected, this, &AutoReconnectedWebSocket::webSocketDisconnected);
-    QEventLoop loop;
-    connect(this, &AutoReconnectedWebSocket::disconnected, &loop, &QEventLoop::quit);
     QWebSocket::close();
-    loop.exec();
-    disconnect(this, &AutoReconnectedWebSocket::disconnected, &loop, &QEventLoop::quit);
 }
 
 int AutoReconnectedWebSocket::getDisconnectionCount()

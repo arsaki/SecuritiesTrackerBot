@@ -30,10 +30,10 @@ void TinkoffWebSocket::subscribeToProperty(const QString& propertyId)
             openTinkoffWebSocket();
         QString streamingRequest = "{\"event\": \"candle:subscribe\",\"figi\": \"" + propertyId + "\",\"interval\": \"1min\"}";
         webSocket.sendTextMessage(streamingRequest);
-        SecuritiesTrackerBot::log("Ok", "subscribeToProperty():  " + propertyId + " подписан." );
+        SecuritiesTrackerBot::log("Ok", "TinkoffWebSocket::subscribeToProperty():  " + propertyId + " подписан." );
     }
     else
-        SecuritiesTrackerBot::log("Error", "subscribeToProperty():  " + propertyId + " уже подписан." );
+        SecuritiesTrackerBot::log("Error", "TinkoffWebSocket::subscribeToProperty():  " + propertyId + " уже подписан." );
 }
 
 void TinkoffWebSocket::unsubscribeFromProperty(const QString& propertyId)
@@ -43,12 +43,12 @@ void TinkoffWebSocket::unsubscribeFromProperty(const QString& propertyId)
         propertiesList.removeAll(propertyId);
         QString streamingRequest = "{\"event\": \"candle:unsubscribe\",\"figi\": \"" + propertyId + "\",\"interval\": \"1min\"}";
         webSocket.sendTextMessage(streamingRequest);
-        SecuritiesTrackerBot::log("Ok", "unsubscribeFromProperty():  " + propertyId + " отписан." );
+        SecuritiesTrackerBot::log("Ok", "TinkoffWebSocket::unsubscribeFromProperty():  " + propertyId + " отписан." );
         if (propertiesList.empty())
             webSocket.close();
     }
     else
-        SecuritiesTrackerBot::log("Error", "unsubscribeFromProperty():  " + propertyId +  "уже отписан." );
+        SecuritiesTrackerBot::log("Error", "TinkoffWebSocket::unsubscribeFromProperty():  " + propertyId +  "уже отписан." );
 }
 
 
@@ -58,10 +58,10 @@ void TinkoffWebSocket::webSocketConnected()
     if (webSocketWasInterrupted)
     {
         int offlineTime = disconnectTime.msecsTo(QTime::currentTime());
-        SecuritiesTrackerBot::log("Ok", "webSocketConnected(): tinkoffWebSocket подключен. Система была offline " + QString::number((static_cast<double>(offlineTime))/1000) + " cекунд");
+        SecuritiesTrackerBot::log("Ok", "TinkoffWebSocket::webSocketConnected(): tinkoffWebSocket подключен. Система была offline " + QString::number((static_cast<double>(offlineTime))/1000) + " cекунд.");
     }
     else
-        SecuritiesTrackerBot::log("Ok", "webSocketConnected(): tinkoffWebSocket подключен.");
+        SecuritiesTrackerBot::log("Ok", "TinkoffWebSocket::webSocketConnected(): tinkoffWebSocket подключен.");
 
     for (auto& propertyId: propertiesList)
     {
@@ -74,12 +74,12 @@ void TinkoffWebSocket::webSocketDisconnected()
 {
     if (propertiesList.empty())
     {
-        SecuritiesTrackerBot::log("Ok", "webSocketDisconnected(): tinkoffWebSocket закрыт. " + webSocket.closeReason() +", code "+ QString::number(webSocket.closeCode()));
+        SecuritiesTrackerBot::log("Ok", "TinkoffWebSocket::webSocketDisconnected(): tinkoffWebSocket закрыт,  code "+ QString::number(webSocket.closeCode()) + ".");
         webSocketWasInterrupted = false;
     }
     else
     {
-        SecuritiesTrackerBot::log("Error", "webSocketDisconnected(): tinkoffWebSocket закрыт. " + webSocket.closeReason() +", code "+ QString::number(webSocket.closeCode()));
+        SecuritiesTrackerBot::log("Error", "TinkoffWebSocket::webSocketDisconnected(): tinkoffWebSocket закрыт,  code "+ QString::number(webSocket.closeCode()) + ".");
         disconnectTime = QTime::currentTime();
         webSocketWasInterrupted = true;
         tinkoffDisconnectCount++;
@@ -90,7 +90,7 @@ void TinkoffWebSocket::webSocketDisconnected()
 
 void TinkoffWebSocket::webSocketError()
 {
-    SecuritiesTrackerBot::log("Error", "webSocketError(): Ошибка tinkoffWebSocket: " + webSocket.errorString());
+    SecuritiesTrackerBot::log("Error", "TinkoffWebSocket::webSocketError(): Ошибка tinkoffWebSocket: " + webSocket.errorString());
 }
 
 void TinkoffWebSocket::webSocketMessageReceived(const QString &message)
@@ -113,14 +113,14 @@ void TinkoffWebSocket::webSocketMessageReceived(const QString &message)
     //If wrong format
     if (!jsonObject.contains("event"))
     {
-        SecuritiesTrackerBot::log ("Error", "webSocketMessageReceived(): Получен некорректный ответ из Tinkoff: " + message + ".");
+        SecuritiesTrackerBot::log ("Error", "TinkoffWebSocket::webSocketMessageReceived(): Получен некорректный ответ из Tinkoff: " + message + ".");
         return;
     }
     //If error message
     else if (jsonObject["event"].toString() == "error")
     {
         QString errorString = jsonObject["payload"].toObject()["error"].toString();
-        SecuritiesTrackerBot::log ("Error", "webSocketMessageReceived(): Получена ошибка из Tinkoff: " + errorString + ".");
+        SecuritiesTrackerBot::log ("Error", "TinkoffWebSocket::webSocketMessageReceived(): Получена ошибка из Tinkoff: " + errorString + ".");
         return;
     }
     //If candle
@@ -130,14 +130,14 @@ void TinkoffWebSocket::webSocketMessageReceived(const QString &message)
         price = jsonObject["payload"].toObject()["c"].toDouble();
         //If wrong price
         if (qFpClassify(price) == FP_ZERO)
-            SecuritiesTrackerBot::log ("Error", "webSocketMessageReceived(): Получена некорректная цена из Tinkoff. Price " + QString::number(price)  + ".");
+            SecuritiesTrackerBot::log ("Error", "TinkoffWebSocket::webSocketMessageReceived(): Получена некорректная цена из Tinkoff. Price " + QString::number(price)  + ".");
         //Ok
         else
             emit  priceUpdated( figi, price);
     }
     //Not a candle
     else
-        SecuritiesTrackerBot::log ("Error", "webSocketMessageReceived(): Неопознанный event. " + jsonObject["event"].toString()  + ".");
+        SecuritiesTrackerBot::log ("Error", "TinkoffWebSocket::webSocketMessageReceived(): Неопознанный event. " + jsonObject["event"].toString()  + ".");
 }
 
 void TinkoffWebSocket::openTinkoffWebSocket()
@@ -152,12 +152,12 @@ void TinkoffWebSocket::openTinkoffWebSocket()
         SecuritiesTrackerBot::delay(CONNECT_TIMEOUT_MS);
         if (webSocket.state() != QAbstractSocket::ConnectedState)
         {
-            SecuritiesTrackerBot::log("Error", "openTinkoffWebSocket(): tinkoffWebSocket подключить сразу не удалось. Сейчас сокет в состоянии " + QString::number(webSocket.state())
+            SecuritiesTrackerBot::log("Error", "TinkoffWebSocket::openTinkoffWebSocket(): tinkoffWebSocket подключить сразу не удалось. Сейчас сокет в состоянии " + QString::number(webSocket.state())
                                                         + ", попытка переподключения через " + QString::number(RECONNECT_TIMEOUT_MS) + " секунд.");
             SecuritiesTrackerBot::delay(RECONNECT_TIMEOUT_MS);
             attempts ++;
         }
     }
-    SecuritiesTrackerBot::log("Ok", "openTinkoffWebSocket(): tinkoffWebSocket подключен с " + QString::number(attempts) + " попытки.");
+    SecuritiesTrackerBot::log("Ok", "TinkoffWebSocket::openTinkoffWebSocket(): tinkoffWebSocket подключен с " + QString::number(attempts) + " попытки.");
 }
 

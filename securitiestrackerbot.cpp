@@ -349,7 +349,7 @@ void SecuritiesTrackerBot::addSubscription(QString figi, Subscription subscripti
     {
         subscriptionsMap[figi].ticker = figiToTicker[figi];
         subscriptionsMap[figi].currency = propertiesList[subscriptionsMap[figi].ticker].currency;
-        log("Ok", "addSubscription(): подписка на " + figiToTicker[figi] + ".");
+        log("Ok", "SecuritiesTrackerBot::addSubscription(): подписка на " + figiToTicker[figi] + ".");
         if (propertiesList[subscriptionsMap[figi].ticker].type == "Cryptocurrency")
             binanceWebSocket.subscribeToProperty(figi);
         else
@@ -472,7 +472,7 @@ void SecuritiesTrackerBot::cleanSubscriptions(QString figi)
             binanceWebSocket.unsubscribeFromProperty(figi);
         else
             tinkoffWebSocket.unsubscribeFromProperty(figi);
-        log("Ok", "cleanSubscriptions(): отписка от " + figiToTicker[figi] + ".");
+        log("Ok", "SecuritiesTrackerBot::cleanSubscriptions(): отписка от " + figiToTicker[figi] + ".");
     }
     else
     {
