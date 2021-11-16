@@ -7,6 +7,7 @@ AutoReconnectedWebSocket::AutoReconnectedWebSocket() : QWebSocket()
 {
     disconnectionCount = 0;
     connect(this, & QWebSocket::disconnected, this, &AutoReconnectedWebSocket::webSocketDisconnected);
+    connect(&reconnectTimer, &QTimer::timeout, this, &AutoReconnectedWebSocket::reconnectTimerTimeout);
 }
 
 AutoReconnectedWebSocket::~AutoReconnectedWebSocket()
@@ -20,6 +21,8 @@ void AutoReconnectedWebSocket::open(const QUrl &url)
     URL = url.toString();
     connectedByURL = true;
     QWebSocket::open(URL);
+    reconnectTimer.setInterval(RECONNECT_TIMEOUT_MS);
+    reconnectTimer.start();
 }
 
 void AutoReconnectedWebSocket::open(const QNetworkRequest &request)
@@ -27,6 +30,8 @@ void AutoReconnectedWebSocket::open(const QNetworkRequest &request)
     AutoReconnectedWebSocket::request = request;
     connectedByURL = false;
     QWebSocket::open(request);
+    reconnectTimer.setInterval(RECONNECT_TIMEOUT_MS);
+    reconnectTimer.start();
 }
 
 void AutoReconnectedWebSocket::close()
@@ -44,12 +49,27 @@ int AutoReconnectedWebSocket::getDisconnectionCount()
 void AutoReconnectedWebSocket::webSocketDisconnected()
 {
     disconnectionCount++ ;
-    while (this->state() != QAbstractSocket::ConnectedState)
+    disconnectTime = QTime::currentTime();
+    if (connectedByURL)
+        open(URL);
+    else
+        open(request);
+}
+
+void AutoReconnectedWebSocket::webSocketConnected()
+{
+    offlineTime = disconnectTime.msecsTo(QTime::currentTime());
+    reconnectTimer.stop();
+}
+
+/*It automatically reconnects if still not opened*/
+void AutoReconnectedWebSocket::reconnectTimerTimeout()
+{
+    if (state()!= QAbstractSocket::ConnectedState)
     {
         if (connectedByURL)
             open(URL);
         else
             open(request);
-        SecuritiesTrackerBot::delay(RECONNECT_TIMEOUT_MS);
     }
 }

@@ -55,11 +55,9 @@ void TinkoffWebSocket::unsubscribeFromProperty(const QString& propertyId)
 
 void TinkoffWebSocket::webSocketConnected()
 {
-    if (webSocketWasInterrupted)
-    {
-        int offlineTime = disconnectTime.msecsTo(QTime::currentTime());
-        SecuritiesTrackerBot::log("Ok", "TinkoffWebSocket::webSocketConnected(): tinkoffWebSocket подключен. Система была offline " + QString::number((static_cast<double>(offlineTime))/1000) + " cекунд.");
-    }
+    if (webSocket.wasInterrupted)
+        SecuritiesTrackerBot::log("Ok", "TinkoffWebSocket::webSocketConnected(): tinkoffWebSocket подключен. Система была offline "
+                                                    + QString::number((static_cast<double>(webSocket.getOfflineTime())/1000)) + " cекунд.");
     else
         SecuritiesTrackerBot::log("Ok", "TinkoffWebSocket::webSocketConnected(): tinkoffWebSocket подключен.");
 
@@ -74,15 +72,13 @@ void TinkoffWebSocket::webSocketDisconnected()
 {
     if (propertiesList.empty())
     {
-        SecuritiesTrackerBot::log("Ok", "TinkoffWebSocket::webSocketDisconnected(): tinkoffWebSocket закрыт,  code "+ QString::number(webSocket.closeCode()) + ".");
-        webSocketWasInterrupted = false;
+        SecuritiesTrackerBot::log("Ok", "TinkoffWebSocket::webSocketDisconnected(): tinkoffWebSocket закрыт, code "+ QString::number(webSocket.closeCode()) + ".");
+        webSocket.wasInterrupted = false;
     }
     else
     {
-        SecuritiesTrackerBot::log("Error", "TinkoffWebSocket::webSocketDisconnected(): tinkoffWebSocket закрыт,  code "+ QString::number(webSocket.closeCode()) + ".");
-        disconnectTime = QTime::currentTime();
-        webSocketWasInterrupted = true;
-        tinkoffDisconnectCount++;
+        SecuritiesTrackerBot::log("Error", "TinkoffWebSocket::webSocketDisconnected(): tinkoffWebSocket закрыт, code "+ QString::number(webSocket.closeCode()) + ".");
+        webSocket.wasInterrupted = true;
         if (webSocket.state() != QAbstractSocket::ConnectedState)
             openTinkoffWebSocket();
     }
@@ -145,19 +141,7 @@ void TinkoffWebSocket::openTinkoffWebSocket()
     QUrl urlWebSocket = QUrl::fromUserInput(URL);
     QNetworkRequest networkWebSocketRequest(urlWebSocket);
     networkWebSocketRequest.setRawHeader("Authorization", tinkoffToken.toLatin1());
-    int attempts = 1;
-    while (webSocket.state() != QAbstractSocket::ConnectedState)
-    {
-        webSocket.open(networkWebSocketRequest);
-        SecuritiesTrackerBot::delay(CONNECT_TIMEOUT_MS);
-        if (webSocket.state() != QAbstractSocket::ConnectedState)
-        {
-            SecuritiesTrackerBot::log("Error", "TinkoffWebSocket::openTinkoffWebSocket(): tinkoffWebSocket подключить сразу не удалось. Сейчас сокет в состоянии " + QString::number(webSocket.state())
-                                                        + ", попытка переподключения через " + QString::number(RECONNECT_TIMEOUT_MS) + " секунд.");
-            SecuritiesTrackerBot::delay(RECONNECT_TIMEOUT_MS);
-            attempts ++;
-        }
-    }
-    SecuritiesTrackerBot::log("Ok", "TinkoffWebSocket::openTinkoffWebSocket(): tinkoffWebSocket подключен с " + QString::number(attempts) + " попытки.");
+    webSocket.open(networkWebSocketRequest);
+    SecuritiesTrackerBot::log("Ok", "TinkoffWebSocket::openTinkoffWebSocket(): tinkoffWebSocket подключен.");
 }
 

@@ -13,7 +13,7 @@ public:
      ~TinkoffWebSocket() override;
     virtual void subscribeToProperty(const QString &propertyId) override;
     virtual void unsubscribeFromProperty(const QString &propertyId) override;
-    virtual int    getDisconnectionCount() override     {return disconnectionCount;}
+    virtual int    getDisconnectionCount() override     {return webSocket.getDisconnectionCount();}
     void setToken(const QString &token)                     {tinkoffToken = token;}
 signals:
     void priceUpdated(QString propertyId,double price);
@@ -29,10 +29,8 @@ private:
     QString URL = "wss://api-invest.tinkoff.ru/openapi/md/v1/md-openapi/ws";
     QString tinkoffToken;
     QList<QString> propertiesList;
-    int disconnectionCount = 0;
     QTime disconnectTime;
     bool webSocketWasInterrupted = false;
-    int tinkoffDisconnectCount = 0;
 };
 
 #endif // TINKOFFWEBSOCKET_H

@@ -33,8 +33,7 @@
 
 bool SecuritiesTrackerBot::loggingEnabled = true;
 
-SecuritiesTrackerBot::SecuritiesTrackerBot(QWidget *parent):
-    QObject(parent)
+SecuritiesTrackerBot::SecuritiesTrackerBot()
 {
     log("START", "--------------------------------------------------------");
     log("Ok", "SecuritiesTrackerBot(): Сервис стартует.");

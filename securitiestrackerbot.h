@@ -12,10 +12,6 @@
 #include "connectors/tinkoffwebsocket.h"
 #include "connectors/interfacewebsocket.h"
 
-namespace Ui {
-class SecuritiesTrackerBot;
-}
-
 class SecuritiesTrackerBot : public QObject
 {
     Q_OBJECT
@@ -80,7 +76,7 @@ class SecuritiesTrackerBot : public QObject
     void cleanSubscriptions(QString figi);
     bool isNumber(QString string);
 public:    
-    explicit SecuritiesTrackerBot(QWidget *parent = nullptr);
+    explicit SecuritiesTrackerBot();
     ~SecuritiesTrackerBot() override;
     static void log(QString type, QString message);
     static void delay (int msec);
