@@ -7,11 +7,13 @@
 
 class SecurityTrackerBot;
 
+enum BinanceType : bool {Spot = false, Perpetual = true};
+
 class BinanceWebSocket :  public InterfaceWebSocket
 {
     Q_OBJECT
 public:
-    BinanceWebSocket();
+    BinanceWebSocket(bool type = Spot);
     ~BinanceWebSocket() override;
     virtual void subscribeToProperty(const QString &propertyId) override;
     virtual void unsubscribeFromProperty(const QString &propertyId) override;
@@ -22,6 +24,8 @@ protected slots:
     void webSocketMessageReceived(const QString &message);
 private:
     QMap<QString,AutoReconnectedWebSocket*> propertyIdToSocket;
+    QString URL;
+    bool type;          //Spot or Perpetual
 };
 
 #endif // BINANCEWEBSOCKET_H

@@ -33,8 +33,9 @@
 
 bool SecuritiesTrackerBot::loggingEnabled = true;
 
-SecuritiesTrackerBot::SecuritiesTrackerBot()
-{
+
+SecuritiesTrackerBot::SecuritiesTrackerBot(): spotBinanceWebSocket(Spot),   perpetualBinanceWebSocket(Perpetual)
+{    
     log("START", "--------------------------------------------------------");
     log("Ok", "SecuritiesTrackerBot(): Сервис стартует.");
     if (loadSettings("/etc/securitiestrackerbot.conf"))
@@ -51,7 +52,8 @@ SecuritiesTrackerBot::SecuritiesTrackerBot()
     StartTime = QDateTime::currentDateTime();
 
     connect(&tinkoffWebSocket, &TinkoffWebSocket::priceUpdated, this, &SecuritiesTrackerBot::webSocketMessageReceived);
-    connect(&binanceWebSocket, &BinanceWebSocket::priceUpdated, this, &SecuritiesTrackerBot::webSocketMessageReceived);
+    connect(&spotBinanceWebSocket, &BinanceWebSocket::priceUpdated, this, &SecuritiesTrackerBot::webSocketMessageReceived);
+    connect(&perpetualBinanceWebSocket, &BinanceWebSocket::priceUpdated, this, &SecuritiesTrackerBot::webSocketMessageReceived);
     connect(&propertiesListRefreshTimer, &QTimer::timeout, this, &SecuritiesTrackerBot::downloadPropertiesList);
     propertiesListRefreshTimer.start(60*60*1000); //Every hour
 
@@ -75,7 +77,8 @@ SecuritiesTrackerBot::SecuritiesTrackerBot()
 SecuritiesTrackerBot::~SecuritiesTrackerBot()
 {
     disconnect(&tinkoffWebSocket, &TinkoffWebSocket::priceUpdated, this, &SecuritiesTrackerBot::webSocketMessageReceived);
-    disconnect(&binanceWebSocket, &BinanceWebSocket::priceUpdated, this, &SecuritiesTrackerBot::webSocketMessageReceived);
+    disconnect(&spotBinanceWebSocket, &BinanceWebSocket::priceUpdated, this, &SecuritiesTrackerBot::webSocketMessageReceived);
+    disconnect(&perpetualBinanceWebSocket, &BinanceWebSocket::priceUpdated, this, &SecuritiesTrackerBot::webSocketMessageReceived);
     disconnect(&propertiesListRefreshTimer, &QTimer::timeout, this, &SecuritiesTrackerBot::downloadPropertiesList);
     log("Ok", "~SecuritiesTrackerBot(): сервис остановлен.");
 }
@@ -145,25 +148,42 @@ int SecuritiesTrackerBot::downloadTinkoffProperties(QString type)
     return counter;
 }
 
-int SecuritiesTrackerBot::downloadBinanceProperties()
+int SecuritiesTrackerBot::downloadBinanceProperties(bool type = Spot)
 {
-    QJsonArray propertiesArray = getJSONfromURL("https://api.binance.com/api/v3/exchangeInfo").object()["symbols"].toArray();
+    QJsonArray propertiesArray;
+    if (type == Spot)
+        propertiesArray = getJSONfromURL("https://api.binance.com/api/v3/exchangeInfo").object()["symbols"].toArray();
+    else if (type == Perpetual)
+        propertiesArray = getJSONfromURL("https://testnet.binancefuture.com/fapi/v1/exchangeInfo").object()["symbols"].toArray();
     int counter;
     for (counter = 0; counter < propertiesArray.size(); counter ++)
     {
         PropertyDescriptor propertyDescriptor;
-        propertyDescriptor.id = propertiesArray[counter].toObject()["symbol"].toString();
-        propertyDescriptor.name = propertiesArray[counter].toObject()["symbol"].toString();
-        propertyDescriptor.type = "Cryptocurrency";
-        propertyDescriptor.currency = propertiesArray[counter].toObject()["quoteAsset"].toString();
+        if (type == Spot)
+        {
+            propertyDescriptor.type = "Spot";
+            propertyDescriptor.id = propertiesArray[counter].toObject()["symbol"].toString();
+        }
+        else if (type == Perpetual)
+        {
+            propertyDescriptor.type = "Perpetual";
+            propertyDescriptor.id = propertiesArray[counter].toObject()["symbol"].toString() + "PERP";
+        }
+        propertyDescriptor.name = propertyDescriptor.id;
         QString ticker = propertyDescriptor.id;
+        propertyDescriptor.currency = propertiesArray[counter].toObject()["quoteAsset"].toString();
         figiToTicker[ticker] = ticker;
         propertiesList.insert(ticker, propertyDescriptor);
     }
+    QString item;
+    if (type == Spot)
+        item = "криптовалютных пар";
+    else if (type == Perpetual)
+        item = "криптофьючерсов";
     if (counter == 0)
-        log("Error", "downloadBinanceProperties(): загружено валютных пар: " + QString::number(counter));
+        log("Error", "downloadBinanceProperties(): загружено " + item + ": " + QString::number(counter));
     else
-        log("Ok", "downloadBinanceProperties(): загружено валютных пар: " + QString::number(counter));
+        log("Ok", "downloadBinanceProperties(): загружено " + item + ": " + QString::number(counter));
     return counter;
 }
 
@@ -304,8 +324,10 @@ QString SecuritiesTrackerBot::findTicker(QString searchkey)
     {
         if (iterator->name.contains(searchkey, Qt::CaseInsensitive))
             {
-            if (iterator->type == "Cryptocurrency")
+            if (iterator->type == "Spot")
                  answer += "Криптопара \"" + iterator.key() + "\".\r\n";
+            else if (iterator->type == "Perpetual")
+                 answer += "Фьючерс на криптопару \"" + iterator.key() + "\".\r\n";
             else
             {
                 if (iterator->type == "Stock")
@@ -323,7 +345,7 @@ QString SecuritiesTrackerBot::findTicker(QString searchkey)
     }
 
     if (!finded)
-        answer =  "Такой команды, ценной бумаги или криптовалютной пары не найдено.";
+        answer =  "Такой команды, ценной бумаги или криптовалюты не найдено.";
     else
         answer += " Найдено " + QString::number(finded) + ".";
     return answer;
@@ -336,9 +358,15 @@ double  SecuritiesTrackerBot::getTinkoffPropertyCurrentPrice(QString figi)
                           "Authorization", tinkoffToken ).object()["payload"].toObject()["lastPrice"].toDouble();
 }
 
-double SecuritiesTrackerBot::getBinancePropertyCurrentPrice(QString cryptoPair)
+double SecuritiesTrackerBot::getBinanceSpotCurrentPrice(QString cryptoPair)
 {
     return getJSONfromURL("https://api.binance.com/api/v3/ticker/price?symbol=" + cryptoPair).object()["price"].toString().toDouble() ;
+}
+
+double SecuritiesTrackerBot::getBinancePerpetualCurrentPrice(QString cryptoPair)
+{
+    cryptoPair.remove("PERP");
+    return getJSONfromURL("https://testnet.binancefuture.com/fapi/v1/ticker/price?symbol=" + cryptoPair).object()["price"].toString().toDouble() ;
 }
 
 void SecuritiesTrackerBot::addSubscription(QString figi, Subscription subscription)
@@ -349,8 +377,10 @@ void SecuritiesTrackerBot::addSubscription(QString figi, Subscription subscripti
         subscriptionsMap[figi].ticker = figiToTicker[figi];
         subscriptionsMap[figi].currency = propertiesList[subscriptionsMap[figi].ticker].currency;
         log("Ok", "SecuritiesTrackerBot::addSubscription(): подписка на " + figiToTicker[figi] + ".");
-        if (propertiesList[subscriptionsMap[figi].ticker].type == "Cryptocurrency")
-            binanceWebSocket.subscribeToProperty(figi);
+        if (propertiesList[subscriptionsMap[figi].ticker].type == "Spot")
+            spotBinanceWebSocket.subscribeToProperty(figi);
+        else if (propertiesList[subscriptionsMap[figi].ticker].type == "Perpetual")
+            perpetualBinanceWebSocket.subscribeToProperty(figi);
         else
             tinkoffWebSocket.subscribeToProperty(figi);
     }
@@ -467,8 +497,10 @@ void SecuritiesTrackerBot::cleanSubscriptions(QString figi)
     subscriptionsMap.remove(figi);
     if (subscriptionsListNewSize == 0)
     {
-        if (propertiesList[figiToTicker[figi]].type == "Cryptocurrency")
-            binanceWebSocket.unsubscribeFromProperty(figi);
+        if (propertiesList[figiToTicker[figi]].type == "Spot")
+            spotBinanceWebSocket.unsubscribeFromProperty(figi);
+        else if (propertiesList[figiToTicker[figi]].type == "Perpetual")
+            perpetualBinanceWebSocket.unsubscribeFromProperty(figi);
         else
             tinkoffWebSocket.unsubscribeFromProperty(figi);
         log("Ok", "SecuritiesTrackerBot::cleanSubscriptions(): отписка от " + figiToTicker[figi] + ".");
@@ -573,8 +605,10 @@ void SecuritiesTrackerBot::mainBotMessage(TelegramBotUpdate update)
                 if (commandLine.size()<2) // Задан один тикер
                 {
                     answer = "Цена " + ticker + ": " ;
-                    if (property->type == "Cryptocurrency")
-                        answer += QString::number(getBinancePropertyCurrentPrice(property->id));
+                    if (property->type == "Spot")
+                        answer += QString::number(getBinanceSpotCurrentPrice(property->id));
+                    else if(property->type == "Perpetual")
+                        answer += QString::number(getBinancePerpetualCurrentPrice(property->id));
                     else                        // Regular property
                         answer +=  QString::number(getTinkoffPropertyCurrentPrice(property->id));
                     answer += " " + property->currency + ".";
@@ -597,8 +631,10 @@ void SecuritiesTrackerBot::mainBotMessage(TelegramBotUpdate update)
                         else            //И это - не команда а заказ на подписку
                         {
                             double lastPrice;
-                            if (property->type == "Cryptocurrency")
-                                lastPrice = getBinancePropertyCurrentPrice(property->id);
+                            if (property->type == "Spot")
+                                lastPrice = getBinanceSpotCurrentPrice(property->id);
+                            else if (property->type == "Perpetual")
+                                lastPrice = getBinancePerpetualCurrentPrice(property->id);
                             else
                                lastPrice = getTinkoffPropertyCurrentPrice(property->id);
                             answer = "Текущая цена " + ticker + " " + QString::number(lastPrice) + " " + property->currency + ". \r\n";
@@ -640,10 +676,11 @@ void SecuritiesTrackerBot::controlBotMessage(TelegramBotUpdate update)
 
     // send message (Format: Normal)
     if (message.chat.id == telegramMasterId && message.text == "?")
-           controlBot->sendMessage(message.chat.id, " Версия 0.0.2 , запущен " + StartTime.toString(Qt::ISODate) +
+           controlBot->sendMessage(message.chat.id, " Версия 0.0.3 , запущен " + StartTime.toString(Qt::ISODate) +
                                                         ", выгружено позиций: " + QString::number(propertiesList.size()) +
                                                         ", разрывов WebSocket Tinkoff " + QString::number(tinkoffWebSocket.getDisconnectionCount()) +
-                                                        ", разрывов WebSocket Binance " + QString::number(binanceWebSocket.getDisconnectionCount()) + ".");
+                                                        ", разрывов WebSocket Binance " + QString::number(spotBinanceWebSocket.getDisconnectionCount() +
+                                                                                                                                                perpetualBinanceWebSocket.getDisconnectionCount() ) + ".");
 }
 
 void SecuritiesTrackerBot::downloadPropertiesList()
@@ -657,10 +694,11 @@ void SecuritiesTrackerBot::downloadPropertiesList()
     regularPropertiesQty += downloadTinkoffProperties("bonds");
     regularPropertiesQty += downloadTinkoffProperties("etfs");
     regularPropertiesQty += downloadTinkoffProperties("currencies");
-    cryptoPropertiesQty += downloadBinanceProperties();
+    cryptoPropertiesQty += downloadBinanceProperties(Spot);
+    cryptoPropertiesQty += downloadBinanceProperties(Perpetual);
     //Comparing new amounts with new ones
     int newSize = propertiesList.size();
     if (beforeSize != newSize)
-        log ("Ok", "stocksListDownload(): список позиций обновлен, доступно бумаг: " + QString::number(regularPropertiesQty) + \
-                ", криптовалютных пар: "+ QString::number(cryptoPropertiesQty) + ".");
+        log ("Ok", "downloadPropertiesList(): список позиций обновлен, доступно бумаг: " + QString::number(regularPropertiesQty) + \
+                ", криптовалютных активов: "+ QString::number(cryptoPropertiesQty) + ".");
 }

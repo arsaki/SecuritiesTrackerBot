@@ -47,36 +47,44 @@ class SecuritiesTrackerBot : public QObject
         double price;
         bool upwards;
     } UserSubscription;
+
     QMap<QString,PropertyDescriptor> propertiesList;                       //Property ticker to type, ID, full name and currency. Needed to process user requests by ticker.
     QMap<QString,PropertySubscriptionsList> subscriptionsMap;      //Property ID to list of subscriptions map.  Needed to process incoming stock exchange message.
     QMap<qint32, QList<UserSubscription>> usersMap;                     //User telegram ID to corresponding  user subscriptions map. Needed to save user subscriptions in file.
     QMap<QString,QString> figiToTicker;                                             //Reverse table accelerates searching ticker. Needed to process incoming stock exchange message.
-    BinanceWebSocket binanceWebSocket;
+
+    BinanceWebSocket spotBinanceWebSocket;
+    BinanceWebSocket perpetualBinanceWebSocket;
     TinkoffWebSocket tinkoffWebSocket;
+
     TelegramBot *mainBot;
     TelegramBot *controlBot;
-    QDateTime StartTime;
-    QTimer propertiesListRefreshTimer;
+
     QString tinkoffToken;
     QString telegramMainToken;
     QString telegramControlToken;
     qint32 telegramMasterId = 0;
+
+    QDateTime StartTime;
+    QTimer propertiesListRefreshTimer;
+
     QJsonDocument getJSONfromURL(QString URL, QString authHeader = "", QString authToken = "");
     int downloadTinkoffProperties(QString type);
-    int downloadBinanceProperties();
+    int downloadBinanceProperties(bool type);
     int saveUserToFile(qint32 id);
     int loadSettings(QString filename);
     int loadUsersSubscriptionsFromFiles();
     QString findTicker(QString searchkey);
     double getTinkoffPropertyCurrentPrice(QString figi);
-    double getBinancePropertyCurrentPrice(QString cryptoPair);
+    double getBinanceSpotCurrentPrice(QString cryptoPair);
+    double getBinancePerpetualCurrentPrice(QString cryptoPair);
     void addSubscription(QString figi, Subscription subscription);
     QString getSubscriptions(qint32 id, QString figi);
     void disableSubscriptions(qint32 id, QString figi);
     void cleanSubscriptions(QString figi);
     bool isNumber(QString string);
 public:    
-    explicit SecuritiesTrackerBot();
+    explicit SecuritiesTrackerBot() ;
     ~SecuritiesTrackerBot() override;
     static void log(QString type, QString message);
     static void delay (int msec);
@@ -87,6 +95,5 @@ public slots:
     void webSocketMessageReceived(QString propertyId, double price);
     void downloadPropertiesList();
 private:
-
-};
+    };
 #endif // SECURITIESTRACKERBOT_H

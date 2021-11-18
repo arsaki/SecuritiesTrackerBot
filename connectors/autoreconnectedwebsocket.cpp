@@ -58,7 +58,8 @@ void AutoReconnectedWebSocket::webSocketDisconnected()
 
 void AutoReconnectedWebSocket::webSocketConnected()
 {
-    offlineTime = disconnectTime.msecsTo(QTime::currentTime());
+    if (wasInterrupted)
+        offlineTime = disconnectTime.msecsTo(QTime::currentTime());
     reconnectTimer.stop();
 }
 

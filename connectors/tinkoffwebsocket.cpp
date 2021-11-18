@@ -48,7 +48,7 @@ void TinkoffWebSocket::unsubscribeFromProperty(const QString& propertyId)
             webSocket.close();
     }
     else
-        SecuritiesTrackerBot::log("Error", "TinkoffWebSocket::unsubscribeFromProperty():  " + propertyId +  "уже отписан." );
+        SecuritiesTrackerBot::log("Error", "TinkoffWebSocket::unsubscribeFromProperty(): " + propertyId +  " уже отписан." );
 }
 
 
@@ -57,7 +57,7 @@ void TinkoffWebSocket::webSocketConnected()
 {
     if (webSocket.wasInterrupted)
         SecuritiesTrackerBot::log("Ok", "TinkoffWebSocket::webSocketConnected(): tinkoffWebSocket подключен. Система была offline "
-                                                    + QString::number((static_cast<double>(webSocket.getOfflineTime())/1000)) + " cекунд.");
+                                                    + QString::number((static_cast<double>(webSocket.getOfflineTime()))/1000) + " cекунд.");
     else
         SecuritiesTrackerBot::log("Ok", "TinkoffWebSocket::webSocketConnected(): tinkoffWebSocket подключен.");
 
@@ -142,6 +142,5 @@ void TinkoffWebSocket::openTinkoffWebSocket()
     QNetworkRequest networkWebSocketRequest(urlWebSocket);
     networkWebSocketRequest.setRawHeader("Authorization", tinkoffToken.toLatin1());
     webSocket.open(networkWebSocketRequest);
-    SecuritiesTrackerBot::log("Ok", "TinkoffWebSocket::openTinkoffWebSocket(): tinkoffWebSocket подключен.");
 }
 

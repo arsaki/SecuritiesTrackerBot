@@ -4,8 +4,13 @@
 #define CONNECT_TIMEOUT_MS 100
 
 
-BinanceWebSocket::BinanceWebSocket()
-{   
+BinanceWebSocket::BinanceWebSocket(bool type)
+{
+    BinanceWebSocket::type = type;
+    if (type == Spot)
+        URL = "wss://stream.binance.com:9443/ws/";
+     if (type == Perpetual)
+        URL="wss://fstream.binance.com/ws/";
 }
 
 BinanceWebSocket::~BinanceWebSocket()
@@ -19,6 +24,9 @@ BinanceWebSocket::~BinanceWebSocket()
 void BinanceWebSocket::subscribeToProperty(const QString& propertyId)
 {
     QString property = propertyId.toLower();
+    if (type == Perpetual)
+        property.remove("perp");
+    QString typeString = ((type == Spot) ? "Spot" : "Perpetual");
     //Check if none exist
     if (!propertyIdToSocket.contains(property))
     {
@@ -26,21 +34,24 @@ void BinanceWebSocket::subscribeToProperty(const QString& propertyId)
         AutoReconnectedWebSocket * newSocket = new AutoReconnectedWebSocket();
         //2. Add socket to list
         propertyIdToSocket[property] = newSocket;
-        QString url = "wss://stream.binance.com:9443/ws/" + property + "@aggTrade";
-        newSocket->open(url);
+        QString fullUrl = URL + property + "@aggTrade";
+        newSocket->open(fullUrl);
         while (newSocket->state() != QAbstractSocket::ConnectedState)
             SecuritiesTrackerBot::delay(CONNECT_TIMEOUT_MS);
         //3. Connect socket to handler
         connect(newSocket,&AutoReconnectedWebSocket::textMessageReceived, this, &BinanceWebSocket::webSocketMessageReceived);
-        SecuritiesTrackerBot::log("Ok", "BinanceWebSocket::subscribeToProperty(): Открыт сокет Binance по валютной паре " + property + ".");
+        SecuritiesTrackerBot::log("Ok", "BinanceWebSocket::subscribeToProperty(): Открыт сокет Binance " + typeString + " по валютной паре " + property + ".");
     }
     else
-        SecuritiesTrackerBot::log("Error",  "BinanceWebSocket::subscribeToProperty(): Сокет Binance по валютной паре " + property + " уже открыт." );
+        SecuritiesTrackerBot::log("Error",  "BinanceWebSocket::subscribeToProperty(): Сокет Binance " + typeString + " по валютной паре " + property + " уже открыт." );
 }
 
 void BinanceWebSocket::unsubscribeFromProperty(const QString& propertyId)
 {
     QString property = propertyId.toLower();
+    if (type == Perpetual)
+        property.remove("perp");
+    QString typeString = ((type == Spot) ? "Spot" : "Perpetual");
     if (propertyIdToSocket.contains(property))
     {
         AutoReconnectedWebSocket * removedSocket = propertyIdToSocket[property];
@@ -53,10 +64,11 @@ void BinanceWebSocket::unsubscribeFromProperty(const QString& propertyId)
             SecuritiesTrackerBot::delay(CONNECT_TIMEOUT_MS);
         }
         delete removedSocket;   //Постоянно здесь крашится. Надо ждать, пока закроется.
-        SecuritiesTrackerBot::log("Ok", "BinanceWebSocket::unsubscribeFromProperty():  Cокет Binance по валютной паре " + property + " закрыт.");
+        SecuritiesTrackerBot::log("Ok", "BinanceWebSocket::unsubscribeFromProperty():  Cокет Binance " + typeString + " по валютной паре " + property + " закрыт.");
     }
     else
-        SecuritiesTrackerBot::log("Error", "BinanceWebSocket::unsubscribeFromProperty(): Попытка закрытия несуществующего  в таблице сокета Binance по валютной паре " + property + "." );
+        SecuritiesTrackerBot::log("Error", "BinanceWebSocket::unsubscribeFromProperty(): Попытка закрытия несуществующего  в таблице сокета Binance " +
+                                                    typeString + " по валютной паре " + property + "." );
 
 }
 
@@ -83,12 +95,14 @@ void BinanceWebSocket::webSocketMessageReceived(const QString &message)
         file.close();
     }
     QJsonObject jsonObject = QJsonDocument::fromJson(message.toLatin1()).object();
+    QString typeString = ((type == Spot) ? "Spot" : "Perpetual");
 
     //ERROR MESSAGE
     if (jsonObject.contains("error"))  //Сообщение об ошибке
     {
         QString errorMessage = jsonObject["error"].toObject()["msg"].toString();
-        SecuritiesTrackerBot::log("Error", "BinanceWebSocket::webSocketMessageReceived(): По сокету Binance получена ошибка: " + errorMessage + "." );
+
+        SecuritiesTrackerBot::log("Error", "BinanceWebSocket::webSocketMessageReceived(): По сокету Binance " + typeString + " получена ошибка: " + errorMessage + "." );
         return;
     }
     //RESULT MESSAGE
@@ -97,7 +111,7 @@ void BinanceWebSocket::webSocketMessageReceived(const QString &message)
     //FORMAT ERROR
     if (!jsonObject.contains("s") || !jsonObject.contains("p"))  //Неправильный формат файла
     {
-        SecuritiesTrackerBot::log("Error", "BinanceWebSocket::webSocketMessageReceived(): По сокету Binance получен пакет неправильной структуры: " + message + "." );
+        SecuritiesTrackerBot::log("Error", "BinanceWebSocket::webSocketMessageReceived(): По сокету Binance " + typeString + " получен пакет неправильной структуры: " + message + "." );
         return;
     }
    QString propertyId = jsonObject["s"].toString();
@@ -105,11 +119,16 @@ void BinanceWebSocket::webSocketMessageReceived(const QString &message)
    // WRONG VALUES
    if (propertyId == "" || qFpClassify(price) == FP_ZERO)
    {
-        SecuritiesTrackerBot::log("Error", "BinanceWebSocket::webSocketMessageReceived(): По сокету Binance получен пакет с некорректными значениями: " + message + "." );
+        SecuritiesTrackerBot::log("Error", "BinanceWebSocket::webSocketMessageReceived(): По сокету Binance " + typeString + " получен пакет с некорректными значениями: " + message + "." );
     }
    //OK
    else
-        emit priceUpdated(propertyId, price);
+   {
+      if (type == Spot)
+           emit priceUpdated(propertyId, price);
+      else if (type == Perpetual)
+           emit priceUpdated(propertyId + "PERP", price);
+   }
 }
 
 
