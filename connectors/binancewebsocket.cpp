@@ -63,7 +63,7 @@ void BinanceWebSocket::unsubscribeFromProperty(const QString& propertyId)
             SecuritiesTrackerBot::log("Error", "BinanceWebSocket::unsubscribeFromProperty(): websocket не закрылся, ожидание 100ms");
             SecuritiesTrackerBot::delay(CONNECT_TIMEOUT_MS);
         }
-        delete removedSocket;   //Постоянно здесь крашится. Надо ждать, пока закроется.
+//        delete removedSocket;   //Постоянно здесь крашится. Надо ждать, пока закроется.
         SecuritiesTrackerBot::log("Ok", "BinanceWebSocket::unsubscribeFromProperty():  Cокет Binance " + typeString + " по валютной паре " + property + " закрыт.");
     }
     else
