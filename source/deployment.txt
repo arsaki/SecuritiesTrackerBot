@@ -1,5 +1,5 @@
 1. apt-get install libxcb-xinput0 qt5dxcb-plugin
 2. Edit and put config file to /etc/securitiestrackerbot.conf
 3. Make /srv/securitiestrackerbot with user permissions
-4. Run ./securitiestrackerbot. 
+4. Run ./SecuritiesTrackerBot. 
 5. Enjoy!
